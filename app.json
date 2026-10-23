@@ -1,17 +1,25 @@
 {
   "expo": {
-    "name": "AppSDEC",
-    "slug": "AppSDEC",
+    "name": "SDEC",
+    "slug": "sdec",
     "version": "1.0.0",
     "orientation": "portrait",
+    "scheme": "sdec",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#0B0D0C",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.sdec.app",
+      "infoPlist": {
+        "NSHealthShareUsageDescription": "SDEC puede leer tus pasos si activas una integración de salud en una versión con development build.",
+        "NSHealthUpdateUsageDescription": "SDEC no escribe datos de salud en la versión actual."
+      }
     },
     "android": {
+      "package": "com.sdec.app",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#0B0D0C",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
@@ -19,6 +27,39 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-sqlite",
+      "expo-secure-store",
+      "expo-sharing",
+      [
+        "expo-notifications",
+        {
+          "color": "#C6FF3D",
+          "defaultChannel": "sdec-recordatorios"
+        }
+      ],
+      "expo-font",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#0B0D0C",
+          "dark": {
+            "image": "./assets/splash-icon.png",
+            "backgroundColor": "#0B0D0C"
+          }
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": false
+    },
+    "extra": {
+      "eas": {}
     }
   }
 }
