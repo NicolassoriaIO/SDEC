@@ -13,7 +13,7 @@ export async function exportPersonalData(userId) {
   const data = await dataForExport(userId);
   const payload = {
     aplicacion: 'SDEC — Seguimiento de Ejercicio y Comida',
-    version: '1.0.0',
+    version: '1.2.1',
     exportado_en: new Date().toISOString(),
     datos: data,
   };

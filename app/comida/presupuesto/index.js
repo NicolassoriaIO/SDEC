@@ -32,6 +32,21 @@ import { formatCurrency, formatNumber, parseNumber, parseOptionalNumber } from '
 import { proportionalCost } from '../../../src/utils/cost';
 import { useTheme, spacing, radius, typography } from '../../../src/theme';
 
+function toQuantityGrams(quantity, unit) {
+  if (quantity === null || quantity === undefined) return null;
+  if (unit === 'kg' || unit === 'l') return quantity * 1000;
+  return quantity;
+}
+
+function formatShoppingQuantity(item) {
+  const quantity = Number(item.quantity_g);
+  if (!quantity) return 'Sin cantidad';
+  const unit = item.unit || 'g';
+  const value = unit === 'kg' || unit === 'l' ? quantity / 1000 : quantity;
+  const decimals = Math.abs(value - Math.round(value)) > 0.001 ? 2 : 0;
+  return `${formatNumber(value, decimals)} ${unit}`;
+}
+
 export default function BudgetScreen() {
   const { colors } = useTheme();
   const router = useRouter();
@@ -49,7 +64,7 @@ export default function BudgetScreen() {
   const [budgetOpen, setBudgetOpen] = useState(false);
   const [budgetValue, setBudgetValue] = useState(profile?.weekly_budget ? String(profile.weekly_budget) : '');
   const [itemOpen, setItemOpen] = useState(false);
-  const [newItem, setNewItem] = useState({ name: '', quantity: '', unit: 'g' });
+  const [newItem, setNewItem] = useState({ name: '', quantity: '', unit: 'kg' });
   const [saving, setSaving] = useState(false);
 
   const load = useCallback(async () => {
@@ -144,15 +159,16 @@ export default function BudgetScreen() {
 
   async function addItem() {
     if (!newItem.name.trim()) return setError('Escribe el nombre del producto.');
+    const quantity = parseOptionalNumber(newItem.quantity);
     setSaving(true);
     try {
       await addShoppingItem(user.id, {
         name: newItem.name.trim(),
-        quantityG: parseOptionalNumber(newItem.quantity),
+        quantityG: toQuantityGrams(quantity, newItem.unit),
         unit: newItem.unit,
       });
       setItemOpen(false);
-      setNewItem({ name: '', quantity: '', unit: 'g' });
+      setNewItem({ name: '', quantity: '', unit: 'kg' });
       await load();
     } catch (caught) {
       setError(caught?.message || 'No se pudo añadir a la lista.');
@@ -282,7 +298,7 @@ export default function BudgetScreen() {
                       {item.name}
                     </Text>
                     <Text style={[typography.tiny, { color: colors.textSubtle, textTransform: 'none', letterSpacing: 0 }]}>
-                      {item.quantity_g ? `${formatNumber(item.quantity_g)} ${item.unit}` : 'Sin cantidad'} {cost ? `· ${formatCurrency(cost, currency)}` : ''}
+                      {formatShoppingQuantity(item)} {cost ? `· ${formatCurrency(cost, currency)}` : ''}
                     </Text>
                   </View>
                   <IconButton icon="close" size={15} onPress={() => removeShopping(item)} accessibilityLabel="Quitar de la lista" />
@@ -331,7 +347,7 @@ export default function BudgetScreen() {
 
       <ModalSheet visible={itemOpen} onClose={() => setItemOpen(false)} title="Añadir a la lista" subtitle={`Desde ${formatDateShort(monthStartKey())} · ${currency}`} footer={<Button onPress={addItem} loading={saving}>Añadir</Button>}>
         <Input label="Producto" required value={newItem.name} onChangeText={(value) => setNewItem((current) => ({ ...current, name: value }))} placeholder="Ej.: Avena" autoFocus />
-        <Input label="Cantidad" value={newItem.quantity} onChangeText={(value) => setNewItem((current) => ({ ...current, quantity: value }))} keyboardType="decimal-pad" placeholder="Opcional" />
+        <Input label={`Cantidad (${newItem.unit})`} value={newItem.quantity} onChangeText={(value) => setNewItem((current) => ({ ...current, quantity: value }))} keyboardType="decimal-pad" placeholder="Opcional" />
         <SelectField label="Unidad" value={newItem.unit} onChange={(value) => setNewItem((current) => ({ ...current, unit: value }))} options={SHOPPING_UNITS.map((unit) => ({ key: unit, label: unit }))} />
       </ModalSheet>
     </Screen>

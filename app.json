@@ -2,7 +2,7 @@
   "expo": {
     "name": "SDEC",
     "slug": "sdec",
-    "version": "1.2.0",
+    "version": "1.2.1",
     "orientation": "portrait",
     "scheme": "sdec",
     "icon": "./assets/icon.png",

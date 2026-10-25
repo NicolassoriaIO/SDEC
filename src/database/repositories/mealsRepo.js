@@ -27,14 +27,14 @@ export async function getOrCreateMealLog(userId, date, mealType) {
   ]);
 }
 
-export async function addMealItem(userId, { date, mealType, food, quantityG, displayQuantity, unit = 'g', notes }) {
+export async function addMealItem(userId, { date, mealType, food, quantityG, displayQuantity, unit = 'g', servingGrams = null, notes }) {
   const db = await dbHandle();
   const macro = macroFromAmount(food, quantityG);
   const log = await getOrCreateMealLog(userId, date, mealType);
   await db.runAsync(
     `INSERT INTO meal_log_items
-      (meal_log_id, food_id, food_name, quantity_g, display_quantity, unit, calories, protein, carbs, fat, fiber, notes, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      (meal_log_id, food_id, food_name, quantity_g, display_quantity, unit, serving_grams, calories, protein, carbs, fat, fiber, notes, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       log.id,
       food.id,
@@ -42,6 +42,7 @@ export async function addMealItem(userId, { date, mealType, food, quantityG, dis
       quantityG,
       displayQuantity ?? quantityG,
       unit,
+      servingGrams,
       macro.calories,
       macro.protein,
       macro.carbs,
@@ -54,7 +55,7 @@ export async function addMealItem(userId, { date, mealType, food, quantityG, dis
   return log;
 }
 
-export async function updateMealItemQuantity(userId, itemId, quantityG) {
+export async function updateMealItemQuantity(userId, itemId, quantityG, { displayQuantity = null, unit = null } = {}) {
   const db = await dbHandle();
   const item = await db.getFirstAsync(
     `SELECT li.*, ml.user_id FROM meal_log_items li JOIN meal_logs ml ON ml.id = li.meal_log_id WHERE li.id = ?`,
@@ -78,8 +79,20 @@ export async function updateMealItemQuantity(userId, itemId, quantityG) {
     };
   }
   await db.runAsync(
-    `UPDATE meal_log_items SET quantity_g = ?, display_quantity = ?, calories = ?, protein = ?, carbs = ?, fat = ?, fiber = ? WHERE id = ?`,
-    [quantityG, quantityG, macro.calories, macro.protein, macro.carbs, macro.fat, macro.fiber, itemId]
+    `UPDATE meal_log_items
+        SET quantity_g = ?, display_quantity = ?, unit = ?, calories = ?, protein = ?, carbs = ?, fat = ?, fiber = ?
+      WHERE id = ?`,
+    [
+      quantityG,
+      displayQuantity ?? quantityG,
+      unit ?? item.unit,
+      macro.calories,
+      macro.protein,
+      macro.carbs,
+      macro.fat,
+      macro.fiber,
+      itemId,
+    ]
   );
 }
 
@@ -162,8 +175,8 @@ export async function copyMeal(userId, { fromDate, toDate, mealType }) {
   for (const item of items) {
     await db.runAsync(
       `INSERT INTO meal_log_items
-        (meal_log_id, food_id, food_name, quantity_g, display_quantity, unit, calories, protein, carbs, fat, fiber, notes, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        (meal_log_id, food_id, food_name, quantity_g, display_quantity, unit, serving_grams, calories, protein, carbs, fat, fiber, notes, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         target.id,
         item.food_id,
@@ -171,6 +184,7 @@ export async function copyMeal(userId, { fromDate, toDate, mealType }) {
         item.quantity_g,
         item.display_quantity,
         item.unit,
+        item.serving_grams,
         item.calories,
         item.protein,
         item.carbs,

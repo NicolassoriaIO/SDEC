@@ -387,6 +387,35 @@ export const migrations = [
       CREATE INDEX IF NOT EXISTS idx_ingredient_prices_user ON ingredient_prices(user_id);
     `,
   },
+  {
+    version: 3,
+    name: 'porciones_por_unidad_en_comidas',
+    sql: `
+      ALTER TABLE meal_log_items ADD COLUMN serving_grams REAL;
+
+      UPDATE meal_log_items
+         SET serving_grams = (
+           SELECT fp.grams
+             FROM food_portions fp
+            WHERE fp.food_id = meal_log_items.food_id
+              AND fp.label = meal_log_items.unit
+            LIMIT 1
+         )
+       WHERE food_id IS NOT NULL
+         AND unit <> 'g'
+         AND EXISTS (
+           SELECT 1
+             FROM food_portions fp
+            WHERE fp.food_id = meal_log_items.food_id
+              AND fp.label = meal_log_items.unit
+         );
+
+      UPDATE meal_log_items
+         SET display_quantity = ROUND(quantity_g / serving_grams, 3)
+       WHERE serving_grams IS NOT NULL
+         AND serving_grams > 0;
+    `,
+  },
 ];
 
 export const LATEST_SCHEMA_VERSION = migrations[migrations.length - 1].version;

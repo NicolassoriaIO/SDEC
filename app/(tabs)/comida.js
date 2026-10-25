@@ -64,18 +64,27 @@ export default function MealsScreen() {
     fiber: data?.totals?.fiber || 0,
   };
   const target = plan?.target || null;
+  const editingIsPortion = Boolean(editing?.serving_grams > 0 && editing?.display_quantity != null);
+  const editingUnits = parseOptionalNumber(quantity) || 0;
+  const editingGrams = editingIsPortion ? editingUnits * editing.serving_grams : editingUnits;
 
   function openItem(item) {
     setEditing(item);
-    setQuantity(String(item.quantity_g));
+    setQuantity(String(item.serving_grams > 0 && item.display_quantity != null ? item.display_quantity : item.quantity_g));
   }
 
   async function saveQuantity() {
-    const grams = parseOptionalNumber(quantity);
-    if (grams === null || grams <= 0) return setError('Introduce una cantidad mayor que cero.');
+    if (editingGrams <= 0) return setError('Introduce una cantidad mayor que cero.');
     setSaving(true);
     try {
-      await updateMealItemQuantity(user.id, editing.id, grams);
+      await updateMealItemQuantity(
+        user.id,
+        editing.id,
+        editingGrams,
+        editingIsPortion
+          ? { displayQuantity: editingUnits, unit: editing.unit }
+          : { displayQuantity: editingGrams, unit: 'g' }
+      );
       setEditing(null);
       await load();
     } catch (caught) {
@@ -231,7 +240,10 @@ export default function MealsScreen() {
                   {item.food_name}
                 </Text>
                 <Text style={[typography.tiny, { color: colors.textSubtle }]}>
-                  {formatNumber(item.quantity_g)} g · P {formatNumber(item.protein, 1)} · C {formatNumber(item.carbs, 1)} · G {formatNumber(item.fat, 1)}
+                  {item.serving_grams && item.display_quantity
+                    ? `${formatNumber(item.display_quantity)} × ${item.unit} · ${formatNumber(item.quantity_g)} g`
+                    : `${formatNumber(item.quantity_g)} g`}{' '}
+                  · P {formatNumber(item.protein, 1)} · C {formatNumber(item.carbs, 1)} · G {formatNumber(item.fat, 1)}
                 </Text>
               </View>
               <Text style={[typography.small, { color: colors.primary, fontWeight: '800' }]}>
@@ -303,20 +315,24 @@ export default function MealsScreen() {
         {editing ? (
           <>
             <QuantityStepper
-              label="Cantidad (g)"
+              label={editingIsPortion ? 'Número de porciones' : 'Cantidad (g)'}
               value={quantity}
               onChangeText={setQuantity}
-              step={10}
+              step={editingIsPortion ? 1 : 10}
               min={1}
-              unit="g"
+              unit={editingIsPortion ? 'porciones' : 'g'}
               autoFocus
-              hint="Ajusta con − y +. Los macros se recalculan."
+              hint={
+                editingIsPortion
+                  ? `${formatNumber(editingUnits)} × ${editing.unit} = ${formatNumber(editingGrams)} g. Ajusta con − y +.`
+                  : 'Ajusta con − y +. Los macros se recalculan.'
+              }
             />
             <View style={[styles.macroGrid, { backgroundColor: colors.surfaceAlt }]}>
-              <MacroPill label="kcal" value={formatNumber(Math.round((editing.calories / editing.quantity_g) * (parseOptionalNumber(quantity) || 0)))} color={colors.primary} />
-              <MacroPill label="P" value={`${formatNumber((editing.protein / editing.quantity_g) * (parseOptionalNumber(quantity) || 0), 1)} g`} color={colors.protein} />
-              <MacroPill label="C" value={`${formatNumber((editing.carbs / editing.quantity_g) * (parseOptionalNumber(quantity) || 0), 1)} g`} color={colors.carbs} />
-              <MacroPill label="G" value={`${formatNumber((editing.fat / editing.quantity_g) * (parseOptionalNumber(quantity) || 0), 1)} g`} color={colors.fat} />
+              <MacroPill label="kcal" value={formatNumber(Math.round((editing.calories / editing.quantity_g) * editingGrams))} color={colors.primary} />
+              <MacroPill label="P" value={`${formatNumber((editing.protein / editing.quantity_g) * editingGrams, 1)} g`} color={colors.protein} />
+              <MacroPill label="C" value={`${formatNumber((editing.carbs / editing.quantity_g) * editingGrams, 1)} g`} color={colors.carbs} />
+              <MacroPill label="G" value={`${formatNumber((editing.fat / editing.quantity_g) * editingGrams, 1)} g`} color={colors.fat} />
             </View>
             <Notice tone="info">Los valores provienen del catálogo o de tu registro. Las estimaciones visuales son aproximadas.</Notice>
           </>

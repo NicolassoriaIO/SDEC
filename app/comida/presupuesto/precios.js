@@ -4,7 +4,7 @@ import { useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '../../../src/components/Screen';
 import { Header } from '../../../src/components/Header';
-import { Input } from '../../../src/components/Input';
+import { Input, Segmented } from '../../../src/components/Input';
 import { Button } from '../../../src/components/Button';
 import { Notice } from '../../../src/components/Notice';
 import { LoadingState } from '../../../src/components/EmptyState';
@@ -17,8 +17,27 @@ import {
   listIngredientPrices,
   upsertIngredientPrice,
 } from '../../../src/database/repositories/budgetRepo';
-import { formatCurrency, formatNumber, parseNumber } from '../../../src/utils/numbers';
+import { formatCurrency, formatNumber, parseNumber, round } from '../../../src/utils/numbers';
 import { useTheme, spacing, radius, typography } from '../../../src/theme';
+
+const PURCHASE_UNITS = [
+  { key: 'kg', label: 'kg' },
+  { key: 'g', label: 'g' },
+];
+
+function toGrams(weight, unit) {
+  return unit === 'kg' ? weight * 1000 : weight;
+}
+
+function fromGrams(grams, unit) {
+  return unit === 'kg' ? grams / 1000 : grams;
+}
+
+function formatPurchaseWeight(grams, unit) {
+  const value = fromGrams(Number(grams) || 0, unit);
+  const decimals = Math.abs(value - Math.round(value)) > 0.001 ? 2 : 0;
+  return `${formatNumber(value, decimals)} ${unit === 'kg' ? 'kg' : 'g'}`;
+}
 
 export default function PricesScreen() {
   const { colors } = useTheme();
@@ -31,7 +50,7 @@ export default function PricesScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selected, setSelected] = useState(null);
-  const [form, setForm] = useState({ package_grams: '', price: '', unit: 'g', store: '' });
+  const [form, setForm] = useState({ package_grams: '', price: '', unit: 'kg', store: '' });
   const [saving, setSaving] = useState(false);
 
   const load = useCallback(async () => {
@@ -63,23 +82,38 @@ export default function PricesScreen() {
     const rows = term ? foods.filter((food) => food.name.toLowerCase().includes(term)) : foods;
     return [...rows].sort((a, b) => Number(priceMap.has(b.id)) - Number(priceMap.has(a.id)) || a.name.localeCompare(b.name));
   }, [foods, query, priceMap]);
+  const formPackageGrams = toGrams(parseNumber(form.package_grams, 0), form.unit);
 
   function open(food) {
     const existing = priceMap.get(food.id);
+    const unit = existing?.unit === 'g' ? 'g' : 'kg';
     setSelected(food);
     setForm({
-      package_grams: existing ? String(existing.package_grams) : '',
+      package_grams: existing ? String(round(fromGrams(existing.package_grams, unit), 3)) : '',
       price: existing ? String(existing.price) : '',
-      unit: existing?.unit || 'g',
+      unit,
       store: existing?.store || '',
     });
     setError('');
   }
 
+  function changeUnit(nextUnit) {
+    setForm((current) => {
+      if (nextUnit === current.unit) return current;
+      const weight = parseNumber(current.package_grams, NaN);
+      const packageGrams = Number.isFinite(weight) && weight > 0
+        ? String(nextUnit === 'kg' ? round(weight / 1000, 3) : round(weight * 1000, 3))
+        : current.package_grams;
+      return { ...current, unit: nextUnit, package_grams: packageGrams };
+    });
+  }
+
   async function save() {
-    const packageGrams = parseNumber(form.package_grams, NaN);
+    const weight = parseNumber(form.package_grams, NaN);
+    const packageGrams = toGrams(weight, form.unit);
     const price = parseNumber(form.price, NaN);
-    if (!Number.isFinite(packageGrams) || packageGrams <= 0) return setError('Indica cuántos gramos trae el envase.');
+    if (!Number.isFinite(weight) || weight <= 0) return setError('Indica cuánto compraste.');
+    if (!Number.isFinite(packageGrams) || packageGrams <= 0) return setError('Indica una cantidad mayor que cero.');
     if (!Number.isFinite(price) || price <= 0) return setError('Indica un precio mayor que cero.');
     setSaving(true);
     try {
@@ -112,9 +146,9 @@ export default function PricesScreen() {
 
   return (
     <Screen scroll>
-      <Header back title="Precios" subtitle="Precio del envase y gramos para estimar recetas" />
+      <Header back title="Precios" subtitle="Precio pagado y cantidad comprada" />
       <Notice tone="info" title="Cómo calcularlo">
-        Usa el precio que pagaste y el peso neto del envase (no el bruto). El coste por ración se calcula de forma proporcional.
+        Indica lo que pagaste y cuánto compraste, en kg o g. Usa el peso neto del envase, no el bruto. El coste por ración se calcula de forma proporcional.
       </Notice>
       <Input value={query} onChangeText={setQuery} placeholder="Buscar alimento…" icon="search-outline" autoCapitalize="none" />
       {error ? <Notice tone="danger" title="Aviso" style={{ marginBottom: spacing.sm }}>{error}</Notice> : null}
@@ -134,7 +168,7 @@ export default function PricesScreen() {
               <Text style={[typography.small, { color: colors.text }]}>{food.name}</Text>
               <Text style={[typography.tiny, { color: colors.textSubtle, textTransform: 'none', letterSpacing: 0 }]}>
                 {price
-                  ? `${formatCurrency(price.price, currency)} / ${formatNumber(price.package_grams)} g · ${formatCurrency((price.price / price.package_grams) * 100, currency)} por 100 g`
+                  ? `${formatCurrency(price.price, currency)} / ${formatPurchaseWeight(price.package_grams, price.unit)} · ${formatCurrency((price.price / price.package_grams) * 1000, currency)}/kg`
                   : 'Sin precio registrado'}
               </Text>
             </View>
@@ -147,7 +181,7 @@ export default function PricesScreen() {
         visible={Boolean(selected)}
         onClose={() => setSelected(null)}
         title={selected?.name || 'Precio'}
-        subtitle="Precio del envase completo"
+        subtitle="Precio pagado y cantidad comprada"
         footer={
           <View style={{ gap: spacing.sm }}>
             <Button onPress={save} loading={saving} icon="save-outline">Guardar precio</Button>
@@ -159,14 +193,18 @@ export default function PricesScreen() {
           </View>
         }
       >
-        <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-          <Input label="Precio del envase" required style={{ flex: 1 }} value={form.price} onChangeText={(value) => setForm((current) => ({ ...current, price: value }))} keyboardType="decimal-pad" autoFocus />
-          <Input label="Peso neto (g)" required style={{ flex: 1 }} value={form.package_grams} onChangeText={(value) => setForm((current) => ({ ...current, package_grams: value }))} keyboardType="decimal-pad" />
+        <Text style={[typography.small, { color: colors.textMuted, fontWeight: '700', marginBottom: spacing.xs }]}>
+          Unidad de compra
+        </Text>
+        <Segmented options={PURCHASE_UNITS} value={form.unit} onChange={changeUnit} />
+        <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md }}>
+          <Input label={`Cantidad comprada (${form.unit})`} required style={{ flex: 1 }} value={form.package_grams} onChangeText={(value) => setForm((current) => ({ ...current, package_grams: value }))} keyboardType="decimal-pad" autoFocus />
+          <Input label="Precio pagado" required style={{ flex: 1 }} value={form.price} onChangeText={(value) => setForm((current) => ({ ...current, price: value }))} keyboardType="decimal-pad" />
         </View>
         <Input label="Tienda" value={form.store} onChangeText={(value) => setForm((current) => ({ ...current, store: value }))} placeholder="Opcional" icon="storefront-outline" />
-        {form.price && form.package_grams ? (
+        {form.price && formPackageGrams > 0 ? (
           <Notice tone="info" title="Equivalencia">
-            {formatCurrency((parseNumber(form.price, 0) / (parseNumber(form.package_grams, 1) || 1)) * 100, currency)} por 100 g.
+            {formatPurchaseWeight(formPackageGrams, form.unit)} por {formatCurrency(parseNumber(form.price, 0), currency)} · {formatCurrency((parseNumber(form.price, 0) / formPackageGrams) * 1000, currency)}/kg · {formatCurrency((parseNumber(form.price, 0) / formPackageGrams) * 100, currency)}/100 g.
             {form.store ? ` Precio de ${form.store}.` : ''}
           </Notice>
         ) : null}

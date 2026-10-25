@@ -52,7 +52,7 @@ export default function FoodPickerScreen() {
   const [error, setError] = useState('');
   const [selected, setSelected] = useState(null);
   const [quantity, setQuantity] = useState('100');
-  const [portionLabel, setPortionLabel] = useState('gramos');
+  const [selectedPortion, setSelectedPortion] = useState(null);
   const [saving, setSaving] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [newFood, setNewFood] = useState(EMPTY_FOOD);
@@ -81,8 +81,7 @@ export default function FoodPickerScreen() {
     try {
       const full = await getFood(user.id, food.id);
       setSelected(full);
-      const gramsPortion = full.portions?.find((portion) => portion.unit === 'g');
-      setPortionLabel(gramsPortion ? gramsPortion.label : 'gramos');
+      setSelectedPortion(null);
       setQuantity('100');
     } catch (caught) {
       setError(caught?.message || 'No se pudo abrir el alimento.');
@@ -99,11 +98,17 @@ export default function FoodPickerScreen() {
   }
 
   function choosePortion(portion) {
-    setPortionLabel(portion.label);
-    setQuantity(String(portion.grams));
+    setSelectedPortion(portion);
+    setQuantity('1');
   }
 
-  const grams = parseOptionalNumber(quantity) || 0;
+  function chooseGrams() {
+    setSelectedPortion(null);
+    setQuantity('100');
+  }
+
+  const quantityNumber = parseOptionalNumber(quantity) || 0;
+  const grams = selectedPortion ? quantityNumber * selectedPortion.grams : quantityNumber;
   const preview = selected ? macroFromAmount(selected, grams) : null;
 
   async function addToMeal() {
@@ -116,8 +121,9 @@ export default function FoodPickerScreen() {
         mealType,
         food: selected,
         quantityG: grams,
-        displayQuantity: grams,
-        unit: portionLabel === 'gramos' ? 'g' : portionLabel,
+        displayQuantity: selectedPortion ? quantityNumber : grams,
+        unit: selectedPortion ? selectedPortion.label : 'g',
+        servingGrams: selectedPortion ? selectedPortion.grams : null,
       });
       router.back();
     } catch (caught) {
@@ -153,7 +159,7 @@ export default function FoodPickerScreen() {
       await load();
       setSelected(created);
       setQuantity('100');
-      setPortionLabel('gramos');
+      setSelectedPortion(null);
     } catch (caught) {
       setCreateError(caught?.message || 'No se pudo crear el alimento.');
     } finally {
@@ -264,8 +270,26 @@ export default function FoodPickerScreen() {
           <>
             {selected.portions?.length ? (
               <>
-                <Text style={[typography.label, { color: colors.textMuted, marginBottom: 6 }]}>Porciones</Text>
+                <Text style={[typography.label, { color: colors.textMuted, marginBottom: 6 }]}>Cantidad por unidad</Text>
+                <Text style={[typography.tiny, { color: colors.textSubtle, marginBottom: spacing.sm, textTransform: 'none', letterSpacing: 0 }]}>
+                  Elige una porción y usa − / + para indicar cuántas unidades comiste.
+                </Text>
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.md }}>
+                  <Pressable
+                    onPress={chooseGrams}
+                    style={[
+                      styles.portion,
+                      {
+                        borderColor: !selectedPortion ? colors.primary : colors.border,
+                        backgroundColor: !selectedPortion ? colors.primarySoft : 'transparent',
+                      },
+                    ]}
+                  >
+                    <Text style={[typography.small, { color: colors.text, fontWeight: '700' }]}>Gramos</Text>
+                    <Text style={[typography.tiny, { color: colors.textMuted, textTransform: 'none', letterSpacing: 0 }]}>
+                      cantidad exacta
+                    </Text>
+                  </Pressable>
                   {selected.portions.map((portion) => (
                     <Pressable
                       key={portion.id}
@@ -273,8 +297,8 @@ export default function FoodPickerScreen() {
                       style={[
                         styles.portion,
                         {
-                          borderColor: portionLabel === portion.label ? colors.primary : colors.border,
-                          backgroundColor: portionLabel === portion.label ? colors.primarySoft : 'transparent',
+                          borderColor: selectedPortion?.id === portion.id ? colors.primary : colors.border,
+                          backgroundColor: selectedPortion?.id === portion.id ? colors.primarySoft : 'transparent',
                         },
                       ]}
                     >
@@ -289,14 +313,18 @@ export default function FoodPickerScreen() {
               </>
             ) : null}
             <QuantityStepper
-              label="Cantidad en gramos"
+              label={selectedPortion ? 'Número de porciones' : 'Cantidad en gramos'}
               value={quantity}
               onChangeText={setQuantity}
-              step={10}
+              step={selectedPortion ? 1 : 10}
               min={1}
-              unit="g"
+              unit={selectedPortion ? 'porciones' : 'g'}
               autoFocus
-              hint="Ajusta con − y +. También puedes escribir una cantidad exacta."
+              hint={
+                selectedPortion
+                  ? `${formatNumber(quantityNumber)} × ${selectedPortion.label} = ${formatNumber(grams)} g`
+                  : 'Ajusta con − y +. También puedes escribir una cantidad exacta.'
+              }
             />
             {preview ? (
               <View style={[styles.preview, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}>

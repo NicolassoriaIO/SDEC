@@ -106,7 +106,7 @@ export const DEFAULT_PROFILE = {
 export const APP_INFO = {
   name: 'SDEC',
   fullName: 'Seguimiento de Ejercicio y Comida',
-  version: '1.0.0',
+  version: '1.2.1',
   manualVersion: '1.0',
 };
 
@@ -153,7 +153,7 @@ export const EXPENSE_CATEGORIES = [
   { key: 'otros', label: 'Otros', icon: 'ellipsis-horizontal-outline' },
 ];
 
-export const SHOPPING_UNITS = ['g', 'kg', 'ml', 'l', 'unidad', 'paquete'];
+export const SHOPPING_UNITS = ['kg', 'g', 'ml', 'l', 'unidad', 'paquete'];
 
 export const REMINDER_TYPES = [
   { key: 'comida', label: 'Comida', icon: 'restaurant-outline' },
