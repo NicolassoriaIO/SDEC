@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '../../../src/components/Screen';
 import { Header } from '../../../src/components/Header';
 import { Input, SelectField } from '../../../src/components/Input';
+import { QuantityStepper } from '../../../src/components/QuantityStepper';
 import { Button, IconButton } from '../../../src/components/Button';
 import { Notice } from '../../../src/components/Notice';
 import { EmptyState, LoadingState } from '../../../src/components/EmptyState';
@@ -287,7 +288,16 @@ export default function FoodPickerScreen() {
                 </View>
               </>
             ) : null}
-            <Input label="Cantidad en gramos" value={quantity} onChangeText={setQuantity} keyboardType="decimal-pad" autoFocus icon="scale-outline" />
+            <QuantityStepper
+              label="Cantidad en gramos"
+              value={quantity}
+              onChangeText={setQuantity}
+              step={10}
+              min={1}
+              unit="g"
+              autoFocus
+              hint="Ajusta con − y +. También puedes escribir una cantidad exacta."
+            />
             {preview ? (
               <View style={[styles.preview, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}>
                 <Text style={[typography.h2, { color: colors.primary }]}>{formatNumber(Math.round(preview.calories))} kcal</Text>

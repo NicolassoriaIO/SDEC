@@ -11,7 +11,7 @@ import { MacroBars } from '../../src/components/ProgressBar';
 import { Button, IconButton } from '../../src/components/Button';
 import { EmptyState, LoadingState } from '../../src/components/EmptyState';
 import { Notice } from '../../src/components/Notice';
-import { Input } from '../../src/components/Input';
+import { QuantityStepper } from '../../src/components/QuantityStepper';
 import { ModalSheet } from '../../src/components/ModalSheet';
 import { useAuth } from '../../src/features/auth/AuthContext';
 import { useEnergyPlan } from '../../src/features/profile/useEnergyPlan';
@@ -302,7 +302,16 @@ export default function MealsScreen() {
       >
         {editing ? (
           <>
-            <Input label="Cantidad (g)" value={quantity} onChangeText={setQuantity} keyboardType="decimal-pad" autoFocus icon="scale-outline" />
+            <QuantityStepper
+              label="Cantidad (g)"
+              value={quantity}
+              onChangeText={setQuantity}
+              step={10}
+              min={1}
+              unit="g"
+              autoFocus
+              hint="Ajusta con − y +. Los macros se recalculan."
+            />
             <View style={[styles.macroGrid, { backgroundColor: colors.surfaceAlt }]}>
               <MacroPill label="kcal" value={formatNumber(Math.round((editing.calories / editing.quantity_g) * (parseOptionalNumber(quantity) || 0)))} color={colors.primary} />
               <MacroPill label="P" value={`${formatNumber((editing.protein / editing.quantity_g) * (parseOptionalNumber(quantity) || 0), 1)} g`} color={colors.protein} />
