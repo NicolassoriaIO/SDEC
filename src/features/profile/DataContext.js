@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { getProfile, updateProfile as updateProfileRepo } from '../../database/repositories/profileRepo';
-import { getLatestWeight } from '../../database/repositories/weightsRepo';
+import { getLatestWeight, upsertWeight } from '../../database/repositories/weightsRepo';
 import { useAuth } from '../auth/AuthContext';
 import { useTheme } from '../../theme';
 
@@ -61,6 +61,17 @@ export function DataProvider({ children }) {
     [user, setMode]
   );
 
+  const saveWeight = useCallback(
+    async (entry) => {
+      if (!user?.id) throw new Error('No hay sesión.');
+      const saved = await upsertWeight(user.id, entry);
+      setLatestWeight(saved);
+      setRevision((value) => value + 1);
+      return saved;
+    },
+    [user]
+  );
+
   const bumpRevision = useCallback(() => setRevision((value) => value + 1), []);
 
   const value = useMemo(
@@ -71,10 +82,11 @@ export function DataProvider({ children }) {
       revision,
       refreshProfile,
       updateProfile,
+      saveWeight,
       bumpRevision,
       setLatestWeight,
     }),
-    [profile, latestWeight, loading, revision, refreshProfile, updateProfile, bumpRevision]
+    [profile, latestWeight, loading, revision, refreshProfile, updateProfile, saveWeight, bumpRevision]
   );
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;

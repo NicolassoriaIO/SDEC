@@ -19,7 +19,6 @@ import { useEnergyPlan } from '../../src/features/profile/useEnergyPlan';
 import { dashboardData } from '../../src/database/repositories/statsRepo';
 import { addWater } from '../../src/database/repositories/waterRepo';
 import { upsertSteps } from '../../src/database/repositories/stepsRepo';
-import { upsertWeight } from '../../src/database/repositories/weightsRepo';
 import { startSession } from '../../src/database/repositories/workoutsRepo';
 import { formatDateEs, todayKey, weekdayShort } from '../../src/utils/date';
 import { formatCurrency, formatNumber, parseOptionalNumber } from '../../src/utils/numbers';
@@ -36,7 +35,7 @@ export default function HomeScreen() {
   const { colors } = useTheme();
   const router = useRouter();
   const { user } = useAuth();
-  const { profile, latestWeight } = useData();
+  const { profile, latestWeight, saveWeight } = useData();
   const { plan, waterGoal, ready } = useEnergyPlan();
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -102,12 +101,12 @@ export default function HomeScreen() {
     }
   }
 
-  async function saveWeight() {
+  async function saveWeightEntry() {
     const value = parseOptionalNumber(weightValue);
     if (value === null || value < 35 || value > 300) return setError('Introduce un peso entre 35 y 300 kg.');
     setSaving(true);
     try {
-      await upsertWeight(user.id, { date: todayKey(), weightKg: value });
+      await saveWeight({ date: todayKey(), weightKg: value });
       setWeightModal(false);
       setWeightValue('');
       await load();
@@ -345,7 +344,7 @@ export default function HomeScreen() {
         onClose={() => setWeightModal(false)}
         title="Registrar peso"
         subtitle={`Último registro: ${latestWeight ? `${formatNumber(latestWeight.weight_kg, 1)} kg` : 'sin datos'}`}
-        footer={<Button onPress={saveWeight} loading={saving}>Guardar peso</Button>}
+        footer={<Button onPress={saveWeightEntry} loading={saving}>Guardar peso</Button>}
       >
         <Input label="Peso (kg)" value={weightValue} onChangeText={setWeightValue} keyboardType="decimal-pad" placeholder={latestWeight ? String(latestWeight.weight_kg) : '72,5'} icon="scale-outline" autoFocus />
         <Notice tone="info">Pésate en condiciones similares y no todos los días si te afecta anímicamente. La tendencia importa más que un dato aislado.</Notice>

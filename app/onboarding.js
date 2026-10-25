@@ -9,9 +9,7 @@ import { Notice } from '../src/components/Notice';
 import { StatCard } from '../src/components/StatCard';
 import { ProgressBar } from '../src/components/ProgressBar';
 import { Logo } from '../src/components/Logo';
-import { useAuth } from '../src/features/auth/AuthContext';
 import { useData } from '../src/features/profile/DataContext';
-import { upsertWeight } from '../src/database/repositories/weightsRepo';
 import { ACTIVITY_LEVELS, CURRENCIES, EXPERIENCE_LEVELS, GOALS } from '../src/constants';
 import { ageFromBirthDate, todayKey } from '../src/utils/date';
 import { buildEnergyPlan, waterTarget } from '../src/utils/calculations';
@@ -30,8 +28,7 @@ const STEPS = [
 export default function OnboardingScreen() {
   const { colors } = useTheme();
   const router = useRouter();
-  const { user } = useAuth();
-  const { profile, latestWeight, updateProfile } = useData();
+  const { profile, latestWeight, updateProfile, saveWeight } = useData();
   const params = useLocalSearchParams();
   const isEditing = params.edit === '1';
   const [step, setStep] = useState(0);
@@ -155,7 +152,7 @@ export default function OnboardingScreen() {
         latestWeight.date !== todayKey() ||
         Math.abs(Number(latestWeight.weight_kg) - Number(weight)) > 0.05;
       if (weightChanged) {
-        await upsertWeight(user.id, {
+        await saveWeight({
           date: todayKey(),
           weightKg: weight,
           notes: isEditing ? 'Peso actualizado desde el perfil.' : 'Peso inicial registrado durante la configuración.',

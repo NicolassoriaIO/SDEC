@@ -82,7 +82,21 @@ npm run web
 
 Sigue las instrucciones de Expo en la terminal para abrir la app en un emulador o dispositivo.
 
-Cuando esté disponible, el APK para Android se publicará en la sección **Releases** de GitHub.
+## Generar el APK para Android
+
+El proyecto usa EAS Build para compilar un APK instalable. Inicia sesión en tu cuenta de Expo:
+
+```bash
+npx eas-cli@latest login
+```
+
+Luego inicia la compilación con el perfil `preview`:
+
+```bash
+npx eas-cli@latest build --platform android --profile preview
+```
+
+En la primera compilación, sigue las indicaciones para crear o vincular el proyecto de EAS. Al terminar, EAS mostrará un enlace para descargar el APK. Para compartirlo desde GitHub, descarga el archivo y adjúntalo a una nueva publicación en **Releases**; la compilación no lo publica allí automáticamente.
 
 ## Comandos disponibles
 

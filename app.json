@@ -59,7 +59,14 @@
       "typedRoutes": false
     },
     "extra": {
-      "eas": {}
+      "eas": {
+        "projectId": "f52e4020-e4c8-4b59-bbef-2dce49533d4b"
+      },
+      "router": {
+        "asyncRoutes": {
+          "web": true
+        }
+      }
     }
   }
 }

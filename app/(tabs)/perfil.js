@@ -33,7 +33,7 @@ export default function ProfileScreen() {
   const { colors } = useTheme();
   const router = useRouter();
   const { user, logout, deleteAccount } = useAuth();
-  const { profile, latestWeight, updateProfile } = useData();
+  const { profile, latestWeight, updateProfile, refreshProfile } = useData();
   const { plan, waterGoal, ready } = useEnergyPlan();
   const [reminders, setReminders] = useState([]);
   const [exporting, setExporting] = useState(false);
@@ -43,6 +43,7 @@ export default function ProfileScreen() {
   useFocusEffect(
     useCallback(() => {
       let active = true;
+      refreshProfile().catch(() => {});
       if (user?.id) {
         listReminders(user.id)
           .then((rows) => {
@@ -55,7 +56,7 @@ export default function ProfileScreen() {
       return () => {
         active = false;
       };
-    }, [user])
+    }, [user, refreshProfile])
   );
 
   const displayName = profile?.display_name || user?.display_name || 'Tu cuenta';
