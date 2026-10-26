@@ -67,6 +67,8 @@ export async function listRecipes(userId) {
       cost_per_serving: completeCost ? totals.cost / recipe.servings : null,
       cost_complete: completeCost,
       missing_prices: ingredients.filter((item) => item.estimated_cost === null).map((item) => item.name),
+      ingredient_food_ids: ingredients.map((item) => item.food_id),
+      ingredient_names: ingredients.map((item) => item.name),
     });
   }
   return enriched;
